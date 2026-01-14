@@ -27,7 +27,7 @@
 ## 🌐 Official Help Center
 
 For more tools and detailed documentation, visit our official site:
-👉 [grasscatweb.xiaocaomaomi.cn/help](https://grasscatweb.xiaocaomaomi.cn)
+👉 [grasscatweb.xiaocaomaomi.cn](https://grasscatweb.xiaocaomaomi.cn)
 
 ---
 © 2026 **GrassCatWeb**. All Rights Reserved.
