@@ -1,4 +1,4 @@
-# 🐱 API Quote Miner v1.0
+# API Quote Miner v1.0
 
 **API Quote Miner** is a professional, single-file automated data harvester designed for text-based APIs. It allows you to collect massive datasets while monitoring the estimated size of the source database in real-time.
 
@@ -27,7 +27,7 @@
 ## 🌐 Official Help Center
 
 For more tools and detailed documentation, visit our official site:
-👉 [grasscatweb.xiaocaomaomi.cn/help](https://grasscatweb.xiaocaomaomi.cn/help)
+👉 [grasscatweb.xiaocaomaomi.cn/help](https://grasscatweb.xiaocaomaomi.cn/)
 
 ---
 © 2026 **GrassCatWeb**. All Rights Reserved.
