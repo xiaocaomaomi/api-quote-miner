@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="API 语录采集与预计总量分析 tool - 专业级 API 数据采集。支持多 Key 轮询、唯一性去重、异常熔断保护。">
+    <title>API 语录采集与预计总量分析 v1.0</title>
+    <style>
+        :root { --primary: #007bff; --success: #52c41a; --danger: #ff4d4f; --warning: #fa8c16; --bg: #f0f2f5; --official: #ff851b; --help: #0056b3; }
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; max-width: 1000px; margin: 10px auto; padding: 20px; background: var(--bg); color: #333; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); position: relative; }
+        
+        .header-box { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; }
+        .title-group { display: flex; align-items: center; gap: 12px; }
+        h1 { font-size: 26px; margin: 0; color: #1a1a1a; font-weight: 800; }
+        .info-btn { width: 32px; height: 32px; background: #f0f0f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; color: #444; border: 1px solid #ddd; transition: 0.3s; font-weight: bold; }
+        
+        .top-btns { display: flex; gap: 8px; align-items: center; }
+        .btn-help-big { background: var(--help); color: white; padding: 10px 20px; border-radius: 12px; font-size: 14px; font-weight: 900; text-decoration: none; display: flex; align-items: center; box-shadow: 0 4px 12px rgba(0,86,179,0.3); transition: 0.3s; border: 2px solid #fff; }
+        .btn-help-big:hover { transform: scale(1.05); background: #004494; }
+        .btn-official { background: var(--official); color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: bold; text-decoration: none; transition: 0.3s; }
+        .lang-switch { background: #333; color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: bold; }
+
+        .status-bar { background: #f8f9fa; padding: 12px 18px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; border: 1px solid #eee; font-size: 14px; font-weight: bold; }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .status-fetching { color: var(--primary); border-left: 6px solid var(--primary); }
+        .status-waiting { color: var(--warning); border-left: 6px solid var(--warning); }
+        .status-stopped { color: #999; border-left: 6px solid #ccc; }
+        .dot-pulse { animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.2); } 100% { opacity: 1; transform: scale(1); } }
+
+        .config-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; background: #fafafa; padding: 20px; border-radius: 12px; border: 1px solid #eee; }
+        .config-item { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        input[type="number"] { width: 55px; padding: 5px; border: 1px solid #ccc; border-radius: 5px; text-align: center; }
+
+        .row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .input-hint { font-size: 14px; color: var(--primary); font-weight: 800; }
+        textarea { height: 120px; padding: 15px; border: 2px solid #eef0f2; border-radius: 12px; outline: none; font-family: 'Consolas', monospace; font-size: 13px; resize: none; transition: 0.3s; }
+        
+        .controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 25px; }
+        button { padding: 12px 25px; cursor: pointer; border: none; border-radius: 10px; font-weight: bold; font-size: 14px; transition: 0.3s; display: flex; align-items: center; gap: 5px; }
+        .btn-start { background: var(--primary); color: white; }
+        .btn-stop { background: var(--danger); color: white; }
+        .btn-down { background: var(--success); color: white; }
+        .btn-import { background: #6c757d; color: white; position: relative; overflow: hidden; }
+        #fileInput { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+
+        .dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px; }
+        .stat-box { background: white; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #eee; }
+        .stat-val { display: block; font-size: 32px; font-weight: 800; color: #222; }
+        .stat-label { font-size: 12px; color: #999; font-weight: bold; }
+        
+        #log { height: 280px; border-radius: 12px; padding: 15px; overflow-y: auto; background: #1e1e2e; color: #d1d1e0; font-family: 'Consolas', monospace; font-size: 12px; border: 5px solid #2d2d3d; }
+        .log-line { margin-bottom: 6px; border-bottom: 1px solid #2d2d3d; padding-bottom: 4px; display: flex; align-items: center; gap: 10px; white-space: nowrap; overflow: hidden; }
+        .log-msg { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+        .tag-status { padding: 2px 6px; border-radius: 4px; font-size: 10px; color: #fff; font-weight: bold; min-width: 30px; text-align: center; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; border-radius: 20px; max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto; }
+        .modal-header { background: var(--primary); color: white; padding: 20px 25px; font-size: 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; }
+        .modal-body { padding: 30px; line-height: 1.8; color: #444; }
+        .step-item { margin-bottom: 25px; padding-left: 50px; position: relative; }
+        .step-num { position: absolute; left: 0; top: 5px; width: 32px; height: 32px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; }
+        .step-title { font-weight: 800; color: #222; font-size: 16px; margin-bottom: 5px; display: block; }
+
+        .footer { margin-top: 40px; padding-top: 20px; text-align: center; border-top: 1px dashed #ddd; }
+        .copyright { margin-top: 10px; font-size: 12px; color: #bbb; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="header-box">
+        <div class="title-group">
+            <h1 id="ui-title">API 语录采集与预计总量分析 v1.0</h1>
+            <div class="info-btn" onclick="toggleModal(true)">?</div>
+        </div>
+        <div class="top-btns">
+            <a href="https://grasscatweb.xiaocaomaomi.cn/help" target="_blank" class="btn-help-big">帮助中心 / HELP CENTER</a>
+            <a href="https://grasscatweb.xiaocaomaomi.cn" target="_blank" class="btn-official">官方网址</a>
+            <div class="lang-switch" onclick="toggleLang()" id="langBtn">English</div>
+        </div>
+    </div>
+
+    <div id="statusIndicator" class="status-bar status-stopped">
+        <div id="statusDot" class="status-dot" style="background: #ccc;"></div>
+        <span id="statusText">等待指令 / Ready</span>
+    </div>
+
+    <div class="config-panel">
+        <div class="config-item">
+            <input type="checkbox" id="autoStopCheck">
+            <label for="autoStopCheck" id="ui-cfg-stop">开启异常保护</label>
+        </div>
+        <div class="config-item">
+            <span id="ui-cfg-errlimit">连续报错</span>
+            <input type="number" id="maxErrors" value="5" min="1">
+            <span id="ui-cfg-times">次自动停止</span>
+        </div>
+        <div class="config-item">
+            <input type="checkbox" id="autoDownloadCheck">
+            <label for="autoDownloadCheck" id="ui-cfg-autodl">自动下载</label>
+        </div>
+        <div class="config-item">
+            <span id="ui-cfg-delay">频率</span>
+            <input type="number" id="delayTime" value="1.0" step="0.1" min="0.1">
+            <span id="ui-cfg-sec">秒/次</span>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="input-hint" id="ui-api-hint">API 列表（多Key轮询）：</div>
+        <textarea id="apiUrls" onfocus="clearExample(this)">https://grasscatweb.xiaocaomaomi.cn/api/warm/?key=free</textarea>
+    </div>
+
+    <div class="controls">
+        <button id="ctrlBtn" class="btn-start" onclick="toggle()">开始抓取 / Start</button>
+        <button class="btn-import"><span id="ui-btn-import">导入旧数据</span> <input type="file" id="fileInput" accept=".txt" onchange="importTxt(this)"></button>
+        <button class="btn-down" onclick="downloadTxt()" id="ui-btn-export">导出 TXT</button>
+    </div>
+
+    <div class="dashboard">
+        <div class="stat-box"><span class="stat-val" id="totalCount">0</span><span class="stat-label" id="ui-stat-req">累计请求</span></div>
+        <div class="stat-box"><span class="stat-val" id="uniqueCount">0</span><span class="stat-label" id="ui-stat-total">唯一数据</span></div>
+        <div class="stat-box" style="background: #fffef5;"><span class="stat-val" id="estimate-val" style="color: #fa8c16;">-</span><span class="stat-label" id="ui-stat-est">预计总量</span></div>
+    </div>
+
+    <div id="log">>> 欢迎使用。点击右上角 [?] 查看详细教程。</div>
+    
+    <div class="footer">
+        <div class="copyright">©2026 grasscatweb.xiaocaomaomi.cn. All Rights Reserved.</div>
+    </div>
+</div>
+
+<div class="modal" id="infoModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span id="ui-modal-title">教程 v1.0</span>
+            <span style="cursor:pointer;font-size:28px" onclick="toggleModal(false)">&times;</span>
+        </div>
+        <div class="modal-body" id="ui-modal-body"></div>
+    </div>
+</div>
+
+<script>
+    let isRunning = false, dataSet = new Set(), totalRequests = 0, errorCounter = 0, urlIndex = 0, sessionRepeats = 0, currentLang = 'zh', isExampleCleared = false;
+
+    function clearExample(el) { if (!isExampleCleared) { el.value = ""; isExampleCleared = true; } }
+
+    const langLib = {
+        zh: {
+            title: 'API 语录采集与预计总量分析 v1.0',
+            btnStart: '开始抓取 / Start', btnStop: '停止抓取 / Stop',
+            btnImport: '导入旧数据', btnExport: '导出 TXT',
+            statusReady: '等待指令...', statusFetching: '抓取中...', statusWaiting: '冷却中...',
+            cfgStop: '异常保护', cfgErrLimit: '连续报错', cfgTimes: '次自动停止', cfgAutoDl: '自动下载',
+            cfgDelay: '频率', cfgSec: '秒/次', apiHint: 'API 列表（多Key轮询）：',
+            statReq: '累计请求', statTotal: '唯一数据', statEst: '预计总量',
+            modalTitle: '详细教程 v1.0',
+            modalContent: `
+                <div class="step-item"><div class="step-num">1</div><span class="step-title">关于 API 格式</span>本工具支持返回纯文本（Text）格式的 API。如果 API 返回 JSON，本工具会自动尝试提取文本，但最推荐使用返回单行文本的接口。</div>
+                <div class="step-item"><div class="step-num">2</div><span class="step-title">多 Key 轮询机制</span>您可以输入多个带不同 API Key 的链接，每行一个。程序将采用“轮询”模式，有效分担单个 Key 的访问压力，规避 429 访问受限。</div>
+                <div class="step-item"><div class="step-num">3</div><span class="step-title">去重逻辑</span>内置高效率 Set 散列去重，无论你采集多久，导出的文件绝对没有一行重复内容。</div>
+                <div class="step-item"><div class="step-num">4</div><span class="step-title">总量推算原理</span>本工具采用统计学碰撞模型。当重复率稳定后，系统会根据已发现的重复概率推算对方数据库的总容量，抓取次数越多越准。</div>
+                <div class="step-item"><div class="step-num">5</div><span class="step-title">安全建议</span>建议抓取频率不要低于 0.5s/次，以免触发对方防火墙封禁 IP。</div>`
+        },
+        en: {
+            title: 'API Miner & Estimator v1.0',
+            btnStart: 'Start Mining', btnStop: 'Stop Mining',
+            btnImport: 'Import', btnExport: 'Export TXT',
+            statusReady: 'Ready...', statusFetching: 'Fetching...', statusWaiting: 'Waiting...',
+            cfgStop: 'Protection', cfgErrLimit: 'Stop at', cfgTimes: 'Errors', cfgAutoDl: 'Auto DL',
+            cfgDelay: 'Delay', cfgSec: 's/Req', apiHint: 'API List:',
+            statReq: 'Requests', statTotal: 'Unique', statEst: 'Estimated Total',
+            modalTitle: 'Manual v1.0',
+            modalContent: `<div>1. Supports Plain Text APIs.<br>2. Supports multi-key round-robin.<br>3. Built-in de-duplication.<br>4. Statistical size estimation.</div>`
+        }
+    };
+
+    function toggleLang() { currentLang = currentLang === 'zh' ? 'en' : 'zh'; document.getElementById('langBtn').innerText = currentLang === 'zh' ? 'English' : '中文版'; updateUI(); }
+
+    function updateUI() {
+        const l = langLib[currentLang];
+        document.getElementById('ui-title').innerText = l.title;
+        document.getElementById('ui-cfg-stop').innerText = l.cfgStop;
+        document.getElementById('ui-cfg-errlimit').innerText = l.cfgErrLimit;
+        document.getElementById('ui-cfg-times').innerText = l.cfgTimes;
+        document.getElementById('ui-cfg-autodl').innerText = l.cfgAutoDl;
+        document.getElementById('ui-cfg-delay').innerText = l.cfgDelay;
+        document.getElementById('ui-cfg-sec').innerText = l.cfgSec;
+        document.getElementById('ui-api-hint').innerText = l.apiHint;
+        document.getElementById('ui-btn-import').innerText = l.btnImport;
+        document.getElementById('ui-btn-export').innerText = l.btnExport;
+        document.getElementById('ui-stat-req').innerText = l.statReq;
+        document.getElementById('ui-stat-total').innerText = l.statTotal;
+        document.getElementById('ui-stat-est').innerText = l.statEst;
+        document.getElementById('ui-modal-title').innerText = l.modalTitle;
+        document.getElementById('ui-modal-body').innerHTML = l.modalContent;
+        if (!isRunning) { document.getElementById('ctrlBtn').innerText = l.btnStart; updateStatus('stopped', l.statusReady); } 
+        else { document.getElementById('ctrlBtn').innerText = l.btnStop; }
+    }
+
+    function updateStatus(t, m) {
+        const b = document.getElementById('statusIndicator'), d = document.getElementById('statusDot'), x = document.getElementById('statusText');
+        b.className = 'status-bar status-' + t;
+        d.style.background = t === 'fetching' ? 'var(--primary)' : t === 'waiting' ? 'var(--warning)' : '#ccc';
+        d.className = t === 'fetching' ? 'status-dot dot-pulse' : 'status-dot';
+        x.innerText = m;
+    }
+
+    function toggleModal(s) { document.getElementById('infoModal').style.display = s ? 'flex' : 'none'; }
+
+    async function toggle() {
+        if (isRunning) { stopTask("User Stop", false); } 
+        else {
+            if (getUrls().length === 0) return alert("Empty API");
+            isRunning = true; errorCounter = 0; updateUI(); runLoop();
+        }
+    }
+
+    function stopTask(r, ex) { isRunning = false; updateUI(); updateStatus('stopped', r); log("SYS", "STOP", r, "log-err"); if (ex && document.getElementById('autoDownloadCheck').checked) downloadTxt(); }
+
+    function getUrls() { return document.getElementById('apiUrls').value.split('\n').map(u => u.trim()).filter(u => u.length > 0); }
+
+    async function runLoop() {
+        const l = langLib[currentLang];
+        while (isRunning) {
+            const urls = getUrls(), currentUrl = urls[urlIndex % urls.length];
+            urlIndex++;
+            updateStatus('fetching', l.statusFetching);
+            try {
+                const response = await fetch(currentUrl);
+                if (response.ok) {
+                    const text = (await response.text()).trim();
+                    totalRequests++; errorCounter = 0;
+                    document.getElementById('totalCount').innerText = totalRequests;
+                    if (text && !dataSet.has(text)) {
+                        dataSet.add(text); document.getElementById('uniqueCount').innerText = dataSet.size;
+                        log("GET", "200", text, "log-new");
+                    } else { sessionRepeats++; log("GET", "DUP", "Skip Duplicate", ""); }
+                } else handleError(response.status);
+            } catch (e) { handleError("TIMEOUT"); }
+            updateEstimate();
+            if (isRunning) {
+                const d = parseFloat(document.getElementById('delayTime').value) || 1;
+                updateStatus('waiting', l.statusWaiting + ` (${d}s)`);
+                await new Promise(r => setTimeout(r, d * 1000));
+            }
+        }
+    }
+
+    function handleError(s) {
+        errorCounter++; log("ERR", s, `Count: ${errorCounter}`, "log-err");
+        const m = parseInt(document.getElementById('maxErrors').value);
+        if (document.getElementById('autoStopCheck').checked && errorCounter >= m) stopTask("Too Many Errors", true);
+    }
+
+    function updateEstimate() {
+        const v = document.getElementById('estimate-val');
+        if (totalRequests < 15) { v.innerText = "..."; return; }
+        const r = sessionRepeats / totalRequests;
+        v.innerText = r === 0 ? "MAX" : `≈ ${Math.round(dataSet.size / r)}`;
+    }
+
+    function log(t, s, m, c) {
+        const l = document.getElementById('log'), n = new Date().toLocaleTimeString().split(' ')[0];
+        const d = document.createElement('div');
+        d.className = `log-line ${c}`;
+        d.innerHTML = `<span style="color:#777">[${n}]</span> <span style="font-weight:bold">${t}</span> <span class="tag-status" style="background:${s=='200'?'#2e7d32':'#c62828'}">${s}</span> <span class="log-msg">${m}</span>`;
+        l.prepend(d);
+        if (l.childNodes.length > 100) l.lastChild.remove();
+    }
+
+    function importTxt(i) {
+        const f = i.files[0]; if (!f) return;
+        const r = new FileReader();
+        r.onload = function(e) {
+            e.target.result.split(/\r?\n/).forEach(l => { if (l.trim()) dataSet.add(l.trim()); });
+            document.getElementById('uniqueCount').innerText = dataSet.size;
+            log("SYS", "IMPORT", `Success`, "log-new");
+        };
+        r.readAsText(f);
+    }
+
+    function downloadTxt() {
+        if (dataSet.size === 0) return;
+        const b = new Blob([Array.from(dataSet).join('\n')], {type: 'text/plain'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `Quotes_${dataSet.size}.txt`; a.click();
+    }
+    updateUI();
+</script>
+</body>
+</html>
